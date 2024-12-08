@@ -147,8 +147,7 @@
 						await showArtifacts.set(false);
 					}}
 				>
-					<AdjustmentsHorizontal className=" size-4" strokeWidth="0.5" />
-					<div class="flex items-center">{$i18n.t('Controls')}</div>
+				
 				</DropdownMenu.Item>
 			{/if}
 
