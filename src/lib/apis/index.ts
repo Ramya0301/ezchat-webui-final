@@ -29,6 +29,23 @@ export const getModels = async (token: string = '', base: boolean = false) => {
 		.filter((models) => models)
 		// Sort the models
 		.sort((a, b) => {
+			// Define the priority order for the first four models
+			const priorityOrder = [
+				"Russian GPT-4o-mini",
+				"Russian GPT-4o",
+				"Russian Gemini 1.5 Flash",
+				"Russian Gemini 1.5 Pro"
+			];
+	
+			// Get the index in the priority order, or -1 if not in the list
+			const priorityA = priorityOrder.indexOf(a.name);
+			const priorityB = priorityOrder.indexOf(b.name);
+	
+			// Models in the priority list are ordered by their defined priority
+			if (priorityA !== -1 && priorityB !== -1) return priorityA - priorityB;
+			if (priorityA !== -1) return -1; // a is in the priority list, b is not
+			if (priorityB !== -1) return 1;  // b is in the priority list, a is not
+			
 			// Compare case-insensitively by name for models without position property
 			const lowerA = a.name.toLowerCase();
 			const lowerB = b.name.toLowerCase();
