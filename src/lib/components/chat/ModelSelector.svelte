@@ -92,7 +92,7 @@
 				>
 					<Tooltip content={$i18n.t('Remove Model')}>
 						<button
-							disabled={selectedModels.length >= maxModels || disabled}
+							disabled={disabled}
 							on:click={() => {
 								selectedModels.splice(selectedModelIdx, 1);
 								selectedModels = selectedModels;
