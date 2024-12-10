@@ -19,6 +19,7 @@ from sqlalchemy.sql import exists
 
 class Chat(Base):
     __tablename__ = "chat"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True)
     user_id = Column(String)
