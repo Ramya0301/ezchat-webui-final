@@ -100,7 +100,7 @@ class ChatTitleIdResponse(BaseModel):
     updated_at: int
     created_at: int
 
-
+from .chatbackup import ChatBackup
 class ChatTable:
     def insert_new_chat(self, user_id: str, form_data: ChatForm) -> Optional[ChatModel]:
         with get_db() as db:
@@ -122,6 +122,11 @@ class ChatTable:
 
             result = Chat(**chat.model_dump())
             db.add(result)
+
+            # Create backup entry
+            backup_result = ChatBackup(**chat.model_dump())
+            db.add(backup_result)      
+
             db.commit()
             db.refresh(result)
             return ChatModel.model_validate(result) if result else None
