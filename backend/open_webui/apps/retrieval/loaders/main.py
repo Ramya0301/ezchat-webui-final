@@ -114,38 +114,62 @@ class TikaLoader:
             raise Exception(f"Error calling Tika: {r.reason}")
 
 class CustomExcelLoader:
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str, chunk_size: int = 1000, max_rows: int = None):
         self.file_path = file_path
+        self.chunk_size = chunk_size
+        self.max_rows = max_rows
 
     def load(self) -> list[Document]:
         try:
-            # Read all sheets from the Excel file
             excel_file = pd.ExcelFile(self.file_path)
             documents = []
 
             for sheet_name in excel_file.sheet_names:
-                df = pd.read_excel(self.file_path, sheet_name=sheet_name)
-                
-                # Convert DataFrame to string representation
-                content = f"Sheet: {sheet_name}\n"
-                content += df.to_string(index=False)
-                
-                # Create a Document for each sheet
-                doc = Document(
-                    page_content=content,
-                    metadata={
-                        "source": self.file_path,
-                        "sheet_name": sheet_name,
-                        "row_count": len(df),
-                        "column_count": len(df.columns)
-                    }
-                )
-                documents.append(doc)
+                df = self._load_sheet(sheet_name)
+                if df is not None:  # Skip empty or invalid sheets
+                    content = self._convert_to_string(sheet_name, df)
+                    metadata = self._generate_metadata(sheet_name, df)
+                    documents.append(Document(page_content=content, metadata=metadata))
             
             return documents
         except Exception as e:
-            logging.error(f"Error loading Excel file: {str(e)}")
+            logging.error(f"Error loading Excel file '{self.file_path}': {str(e)}")
             raise
+
+    def _load_sheet(self, sheet_name: str) -> pd.DataFrame:
+        try:
+            df = pd.read_excel(
+                self.file_path,
+                sheet_name=sheet_name,
+                nrows=self.max_rows,
+                usecols=lambda col: not col.startswith("Unnamed"),
+            )
+            if df.empty or len(df.columns) == 0:
+                logging.info(f"Skipping empty sheet: {sheet_name}")
+                return None
+            return df
+        except Exception as e:
+            logging.warning(f"Error processing sheet '{sheet_name}': {str(e)}")
+            return None
+
+    def _convert_to_string(self, sheet_name: str, df: pd.DataFrame) -> str:
+        content = f"Sheet: {sheet_name}\n"
+        content += df.head(self.chunk_size).to_string(index=False)
+        return content
+
+    def _generate_metadata(self, sheet_name: str, df: pd.DataFrame) -> dict:
+        metadata = {
+            "source": self.file_path,
+            "sheet_name": sheet_name,
+        }
+        try:
+            metadata.update({
+                "row_count": len(df),
+                "column_count": len(df.columns),
+            })
+        except Exception as e:
+            logging.warning(f"Could not generate metadata for sheet '{sheet_name}': {str(e)}")
+        return metadata
 
 class Loader:
     def __init__(self, engine: str = "", **kwargs):
