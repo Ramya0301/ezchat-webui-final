@@ -38,22 +38,11 @@
 				class="flex gap-2 items-center px-3 py-2 text-sm  cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md"
 				id="chat-share-button"
 				on:click={() => {
-					window.open('https://google.com', '_blank');
+					window.open('https://ezchat.co.in/manual/Russian.pdf', '_blank');
 				}}
 			>
 				<QuestionMarkCircle className="size-5" />
 				<div class="flex items-center">{$i18n.t('Documentation')}</div>
-			</DropdownMenu.Item>
-
-			<DropdownMenu.Item
-				class="flex gap-2 items-center px-3 py-2 text-sm  cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md"
-				id="chat-share-button"
-				on:click={() => {
-					showShortcutsHandler();
-				}}
-			>
-				<Keyboard className="size-5" />
-				<div class="flex items-center">{$i18n.t('Keyboard shortcuts')}</div>
 			</DropdownMenu.Item>
 		</DropdownMenu.Content>
 	</div>
