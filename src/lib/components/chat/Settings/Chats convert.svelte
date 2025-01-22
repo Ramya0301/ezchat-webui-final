@@ -12,7 +12,7 @@
 		getAllUserChats,
 		getChatList
 	} from '$lib/apis/chats';
-	import { getImportOrigin, convertOpenAIChats } from '$lib/utils';
+	import { getImportOrigin, convertOpenAIChats, convertExternalChatFormat } from '$lib/utils';
 	import { onMount, getContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
@@ -53,16 +53,12 @@
 
 	const importChats = async (_chats) => {
 		for (const chat of _chats) {
-			console.log('Importing chat structure:', chat);
+			console.log(chat);
 
-			try {
-				if (chat.chat) {
-					await createNewChat(localStorage.token, chat.chat);
-				} else {
-					await createNewChat(localStorage.token, chat);
-				}
-			} catch (error) {
-				console.error('Error importing chat:', error);
+			if (chat.chat) {
+				await createNewChat(localStorage.token, chat.chat);
+			} else {
+				await createNewChat(localStorage.token, chat);
 			}
 		}
 
@@ -98,6 +94,56 @@
 		currentChatPage.set(1);
 		await chats.set(await getChatList(localStorage.token, $currentChatPage));
 		scrollPaginationEnabled.set(true);
+	};
+
+	const inputFilesHandler = async (files) => {
+		console.log('Files to import:', files);
+
+		for (const file of files) {
+			const reader = new FileReader();
+			reader.onload = async (e) => {
+				const content = e.target.result;
+				console.log('File content:', content);
+
+				try {
+					const chatItems = JSON.parse(content);
+					let importedChats;
+
+					// Check if this is an external format that needs conversion
+					if (chatItems.conversationId && chatItems.messages) {
+						console.log('Detected external chat format. Converting...');
+						// Convert the external format to the expected format
+						importedChats = convertExternalChatFormat(chatItems);
+						console.log('Converted Chats:', importedChats);
+					} else {
+						console.log('Detected standard chat format.');
+						// This is already in the right format
+						importedChats = chatItems;
+					}
+
+					// Validate imported chats before processing
+					if (!Array.isArray(importedChats)) {
+						throw new Error('Imported chats should be an array.');
+					}
+
+					for (const chat of importedChats) {
+						await createNewChat(localStorage.token, chat.chat);
+					}
+
+					// Refresh chat list after import
+					currentChatPage.set(1);
+					await chats.set(await getChatList(localStorage.token, $currentChatPage));
+					scrollPaginationEnabled.set(true);
+
+					toast.success('Chats imported successfully!');
+				} catch (error) {
+					console.error('Error importing chats:', error);
+					toast.error('Failed to import chats. Please check the file format.');
+				}
+			};
+
+			reader.readAsText(file);
+		}
 	};
 </script>
 

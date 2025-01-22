@@ -18,9 +18,9 @@ from open_webui.env import SRC_LOG_LEVELS
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 
+
 from open_webui.utils.utils import get_admin_user, get_verified_user
 from open_webui.utils.access_control import has_permission
-from open_webui.utils.chat_converter import convert_legacy_chat_format
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MODELS"])
@@ -113,16 +113,6 @@ async def create_new_chat(form_data: ChatForm, user=Depends(get_verified_user)):
 @router.post("/import", response_model=Optional[ChatResponse])
 async def import_chat(form_data: ChatImportForm, user=Depends(get_verified_user)):
     try:
-        log.debug(f"Importing chat data: {form_data.chat.keys()}")
-        
-        # Check if the chat data is in legacy format
-        if "options" in form_data.chat and "messages" in form_data.chat and isinstance(form_data.chat["messages"], list):
-            log.info("Detected legacy chat format, converting...")
-            # Convert legacy format to new format
-            chat_data = convert_legacy_chat_format(form_data.chat)
-            form_data.chat = chat_data["chat"]
-            log.info("Conversion completed")
-        
         chat = Chats.import_chat(user.id, form_data)
         if chat:
             tags = chat.meta.get("tags", [])
@@ -137,7 +127,7 @@ async def import_chat(form_data: ChatImportForm, user=Depends(get_verified_user)
 
         return ChatResponse(**chat.model_dump())
     except Exception as e:
-        log.exception(f"Error importing chat: {str(e)}")
+        log.exception(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=ERROR_MESSAGES.DEFAULT()
         )

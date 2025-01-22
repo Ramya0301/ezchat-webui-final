@@ -1182,8 +1182,11 @@ async def get_all_models():
 
 @app.get("/api/models")
 async def get_models(user=Depends(get_verified_user)):
-    models = await get_all_models()
+    log.debug("Incoming request for models")
+    log.debug(f"User: {user}")
 
+    models = await get_all_models()
+    log.debug(f"All models: {models}")
     # Filter out filter pipelines
     models = [
         model
@@ -1213,7 +1216,7 @@ async def get_models(user=Depends(get_verified_user)):
                 ):
                     filtered_models.append(model)
         models = filtered_models
-
+        log.debug(f"Filtered models: {filtered_models}")
     return {"data": models}
 
 
