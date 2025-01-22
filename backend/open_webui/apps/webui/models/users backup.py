@@ -1,18 +1,15 @@
 import time
 from typing import Optional
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.utils import formataddr
+
 from open_webui.apps.webui.internal.db import Base, JSONField, get_db
 from open_webui.apps.webui.models.chats import Chats
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import BigInteger, Column, String, Text
-import os
 
 ####################
 # User DB Schema
 ####################
+
 
 class User(Base):
     __tablename__ = "user"
@@ -22,7 +19,6 @@ class User(Base):
     email = Column(String)
     role = Column(String)
     profile_image_url = Column(Text)
- 
 
     last_active_at = Column(BigInteger)
     updated_at = Column(BigInteger)
@@ -87,7 +83,6 @@ class UserUpdateForm(BaseModel):
 
 
 class UsersTable:
-    
     def insert_new_user(
         self,
         id: str,
@@ -115,60 +110,10 @@ class UsersTable:
             db.add(result)
             db.commit()
             db.refresh(result)
-
             if result:
-                # Notify admin after user creation
-                self.send_admin_notification(user)
                 return user
             else:
                 return None
-
-    def send_admin_notification(self, user: UserModel):
-        # Email configuration
-        sender_email = os.getenv("SENDER_EMAIL")
-        admin_email = os.getenv("ADMIN_EMAIL")
-        smtp_password = os.getenv("SMTP_PASSWORD")
-        
-        # Don't proceed if required environment variables are missing
-        if not all([sender_email, admin_email, smtp_password]):
-            print("Missing required email configuration. Skipping admin notification.")
-            return
-
-        sender_name = "EZChat New User"
-        smtp_host = "smtp.gmail.com"
-        smtp_port = 587
-        
-        # Create email content
-        subject = "New User Signup Notification"
-        message = f"""
-        <p>A new user has signed up:</p>
-        <ul>
-            <li><strong>Name:</strong> {user.name}</li>
-            <li><strong>Email:</strong> {user.email}</li>
-            <li><strong>Role:</strong> {user.role}</li>
-            <li><strong>Signup Time:</strong> {time.ctime(user.created_at)}</li>
-        </ul>
-        """
-
-        try:
-            # Create the email
-            msg = MIMEMultipart()
-            msg["From"] = formataddr((sender_name, sender_email))
-            msg["To"] = admin_email
-            msg["Subject"] = subject
-            msg.attach(MIMEText(message, "html"))
-
-            # Send the email
-            with smtplib.SMTP(smtp_host, smtp_port) as server:
-                server.starttls()
-                server.login(sender_email, smtp_password)
-                server.sendmail(sender_email, admin_email, msg.as_string())
-
-            print("Admin notification sent successfully.")
-
-        except Exception as e:
-            print(f"Failed to send admin notification: {e}")
-            
 
     def get_user_by_id(self, id: str) -> Optional[UserModel]:
         try:
@@ -204,7 +149,11 @@ class UsersTable:
 
     def get_users(self, skip: int = 0, limit: int = 50) -> list[UserModel]:
         with get_db() as db:
-            users = db.query(User).all()
+            users = (
+                db.query(User)
+                # .offset(skip).limit(limit)
+                .all()
+            )
             return [UserModel.model_validate(user) for user in users]
 
     def get_num_users(self) -> Optional[int]:
@@ -229,10 +178,14 @@ class UsersTable:
         except Exception:
             return None
 
-    def update_user_profile_image_url_by_id(self, id: str, profile_image_url: str) -> Optional[UserModel]:
+    def update_user_profile_image_url_by_id(
+        self, id: str, profile_image_url: str
+    ) -> Optional[UserModel]:
         try:
             with get_db() as db:
-                db.query(User).filter_by(id=id).update({"profile_image_url": profile_image_url})
+                db.query(User).filter_by(id=id).update(
+                    {"profile_image_url": profile_image_url}
+                )
                 db.commit()
 
                 user = db.query(User).filter_by(id=id).first()
@@ -243,7 +196,9 @@ class UsersTable:
     def update_user_last_active_by_id(self, id: str) -> Optional[UserModel]:
         try:
             with get_db() as db:
-                db.query(User).filter_by(id=id).update({"last_active_at": int(time.time())})
+                db.query(User).filter_by(id=id).update(
+                    {"last_active_at": int(time.time())}
+                )
                 db.commit()
 
                 user = db.query(User).filter_by(id=id).first()
@@ -251,7 +206,9 @@ class UsersTable:
         except Exception:
             return None
 
-    def update_user_oauth_sub_by_id(self, id: str, oauth_sub: str) -> Optional[UserModel]:
+    def update_user_oauth_sub_by_id(
+        self, id: str, oauth_sub: str
+    ) -> Optional[UserModel]:
         try:
             with get_db() as db:
                 db.query(User).filter_by(id=id).update({"oauth_sub": oauth_sub})
@@ -270,18 +227,24 @@ class UsersTable:
 
                 user = db.query(User).filter_by(id=id).first()
                 return UserModel.model_validate(user)
+                # return UserModel(**user.dict())
         except Exception:
             return None
 
     def delete_user_by_id(self, id: str) -> bool:
         try:
+            # Delete User Chats
             result = Chats.delete_chats_by_user_id(id)
+
             if result:
                 with get_db() as db:
+                    # Delete User
                     db.query(User).filter_by(id=id).delete()
                     db.commit()
+
                 return True
-            return False
+            else:
+                return False
         except Exception:
             return False
 
