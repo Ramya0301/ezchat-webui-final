@@ -1,6 +1,6 @@
 {
-  "name": "Open WebUI",
-  "short_name": "WebUI",
+  "name": "EZChat",
+  "short_name": "EZChat",
   "icons": [
     {
       "src": "/favicon/web-app-manifest-192x192.png",
