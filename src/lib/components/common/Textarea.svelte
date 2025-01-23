@@ -32,6 +32,7 @@
 </script>
 
 <div
+	role="textbox"
 	contenteditable="true"
 	bind:this={textareaElement}
 	class="{className} whitespace-pre-wrap relative {value

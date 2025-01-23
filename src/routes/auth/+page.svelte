@@ -192,10 +192,6 @@
 										{$i18n.t(`Sign up to EZChat`, { WEBUI_NAME: $WEBUI_NAME })}
 									{/if}
 								</div>
-
-								{#if $config?.onboarding ?? false}
-									
-								{/if}
 							</div>
 
 							{#if $config?.features.enable_login_form || $config?.features.enable_ldap}

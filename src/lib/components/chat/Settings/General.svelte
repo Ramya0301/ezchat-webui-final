@@ -198,8 +198,6 @@
 					</select>
 				</div>
 			</div>
-			{#if $i18n.language === 'en-US'}
-			{/if}
 
 			<div>
 				<div class=" py-0.5 flex w-full justify-between">

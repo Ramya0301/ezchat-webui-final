@@ -4,7 +4,7 @@
 	import FileItem from '$lib/components/common/FileItem.svelte';
 
 	export let selectedKnowledge = [];
-	export let collections = [];
+	export const collections = [];
 
 	const i18n = getContext('i18n');
 </script>

@@ -31,7 +31,7 @@
 	const i18n = getContext('i18n');
 
 	export let initNewChat: Function;
-	export let title: string = EZChat;
+	export const title: string = EZChat;
 	export let shareEnabled: boolean = false;
 
 	export let chat;
@@ -115,8 +115,6 @@
 							</div>
 						</button>
 					</Menu>
-				{:else if $mobile}
-					
 				{/if}
 
 				{#if !$mobile}
