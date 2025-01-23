@@ -53,6 +53,11 @@ if USE_CUDA.lower() == "true":
 else:
     DEVICE_TYPE = "cpu"
 
+try:
+    if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+        DEVICE_TYPE = "mps"
+except Exception:
+    pass
 
 ####################################
 # LOGGING
@@ -311,6 +316,11 @@ RESET_CONFIG_ON_START = (
     os.environ.get("RESET_CONFIG_ON_START", "False").lower() == "true"
 )
 
+
+ENABLE_REALTIME_CHAT_SAVE = (
+    os.environ.get("ENABLE_REALTIME_CHAT_SAVE", "False").lower() == "true"
+)
+
 ####################################
 # REDIS
 ####################################
@@ -327,6 +337,9 @@ WEBUI_AUTH_TRUSTED_EMAIL_HEADER = os.environ.get(
 )
 WEBUI_AUTH_TRUSTED_NAME_HEADER = os.environ.get("WEBUI_AUTH_TRUSTED_NAME_HEADER", None)
 
+BYPASS_MODEL_ACCESS_CONTROL = (
+    os.environ.get("BYPASS_MODEL_ACCESS_CONTROL", "False").lower() == "true"
+)
 
 ####################################
 # WEBUI_SECRET_KEY
@@ -371,7 +384,7 @@ else:
         AIOHTTP_CLIENT_TIMEOUT = 300
 
 AIOHTTP_CLIENT_TIMEOUT_OPENAI_MODEL_LIST = os.environ.get(
-    "AIOHTTP_CLIENT_TIMEOUT_OPENAI_MODEL_LIST", "3"
+    "AIOHTTP_CLIENT_TIMEOUT_OPENAI_MODEL_LIST", ""
 )
 
 if AIOHTTP_CLIENT_TIMEOUT_OPENAI_MODEL_LIST == "":
@@ -382,10 +395,13 @@ else:
             AIOHTTP_CLIENT_TIMEOUT_OPENAI_MODEL_LIST
         )
     except Exception:
-        AIOHTTP_CLIENT_TIMEOUT_OPENAI_MODEL_LIST = 3
+        AIOHTTP_CLIENT_TIMEOUT_OPENAI_MODEL_LIST = 5
 
 ####################################
 # OFFLINE_MODE
 ####################################
 
 OFFLINE_MODE = os.environ.get("OFFLINE_MODE", "false").lower() == "true"
+
+if OFFLINE_MODE:
+    os.environ["HF_HUB_OFFLINE"] = "1"

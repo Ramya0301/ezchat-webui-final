@@ -4,11 +4,15 @@ import re
 from typing import Any, Awaitable, Callable, get_type_hints
 from functools import update_wrapper, partial
 
-from langchain_core.utils.function_calling import convert_to_openai_function
-from open_webui.apps.webui.models.tools import Tools
-from open_webui.apps.webui.models.users import UserModel
-from open_webui.apps.webui.utils import load_tools_module_by_id
+
+from fastapi import Request
 from pydantic import BaseModel, Field, create_model
+from langchain_core.utils.function_calling import convert_to_openai_function
+
+
+from open_webui.models.tools import Tools
+from open_webui.models.users import UserModel
+from open_webui.utils.plugin import load_tools_module_by_id
 
 log = logging.getLogger(__name__)
 
@@ -32,7 +36,7 @@ def apply_extra_params_to_tool_function(
 
 # Mutation on extra_params
 def get_tools(
-    webui_app, tool_ids: list[str], user: UserModel, extra_params: dict
+    request: Request, tool_ids: list[str], user: UserModel, extra_params: dict
 ) -> dict[str, dict]:
     tools_dict = {}
 
@@ -41,10 +45,10 @@ def get_tools(
         if tools is None:
             continue
 
-        module = webui_app.state.TOOLS.get(tool_id, None)
+        module = request.app.state.TOOLS.get(tool_id, None)
         if module is None:
             module, _ = load_tools_module_by_id(tool_id)
-            webui_app.state.TOOLS[tool_id] = module
+            request.app.state.TOOLS[tool_id] = module
 
         extra_params["__id__"] = tool_id
         if hasattr(module, "valves") and hasattr(module, "Valves"):
@@ -88,6 +92,32 @@ def get_tools(
                 tools_dict[function_name] = tool_dict
 
     return tools_dict
+
+
+def parse_description(docstring: str | None) -> str:
+    """
+    Parse a function's docstring to extract the description.
+
+    Args:
+        docstring (str): The docstring to parse.
+
+    Returns:
+        str: The description.
+    """
+
+    if not docstring:
+        return ""
+
+    lines = [line.strip() for line in docstring.strip().split("\n")]
+    description_lines: list[str] = []
+
+    for line in lines:
+        if re.match(r":param", line) or re.match(r":return", line):
+            break
+
+        description_lines.append(line)
+
+    return "\n".join(description_lines)
 
 
 def parse_docstring(docstring):
@@ -138,6 +168,8 @@ def function_to_pydantic_model(func: Callable) -> type[BaseModel]:
     docstring = func.__doc__
     descriptions = parse_docstring(docstring)
 
+    tool_description = parse_description(docstring)
+
     field_defs = {}
     for name, param in parameters.items():
         type_hint = type_hints.get(name, Any)
@@ -148,7 +180,10 @@ def function_to_pydantic_model(func: Callable) -> type[BaseModel]:
             continue
         field_defs[name] = type_hint, Field(default_value, description=description)
 
-    return create_model(func.__name__, **field_defs)
+    model = create_model(func.__name__, **field_defs)
+    model.__doc__ = tool_description
+
+    return model
 
 
 def get_callable_attributes(tool: object) -> list[Callable]:
