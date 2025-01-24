@@ -81,7 +81,7 @@
 	const archiveAllChatsHandler = async () => {
 		await goto('/');
 		await archiveAllChats(localStorage.token).catch((error) => {
-			toast.error(error);
+			toast.error(`${error}`);
 		});
 
 		currentChatPage.set(1);
@@ -92,7 +92,7 @@
 	const deleteAllChatsHandler = async () => {
 		await goto('/');
 		await deleteAllChats(localStorage.token).catch((error) => {
-			toast.error(error);
+			toast.error(`${error}`);
 		});
 
 		currentChatPage.set(1);
