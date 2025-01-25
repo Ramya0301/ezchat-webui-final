@@ -2,8 +2,6 @@ name: Frontend Build
 
 on:
   push:
-    branches-ignore:
-      - main
     branches:
       - dev
   pull_request:
