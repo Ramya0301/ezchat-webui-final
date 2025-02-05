@@ -3,13 +3,16 @@
 	import relativeTime from 'dayjs/plugin/relativeTime';
 	import isToday from 'dayjs/plugin/isToday';
 	import isYesterday from 'dayjs/plugin/isYesterday';
+	import localizedFormat from 'dayjs/plugin/localizedFormat';
 
 	dayjs.extend(relativeTime);
 	dayjs.extend(isToday);
 	dayjs.extend(isYesterday);
+	dayjs.extend(localizedFormat);
 
 	import { getContext, onMount } from 'svelte';
 	const i18n = getContext<Writable<i18nType>>('i18n');
+	
 
 	import { settings, user, shortCodesToEmojis } from '$lib/stores';
 
@@ -42,7 +45,7 @@
 	export let onReaction: Function = () => {};
 
 	let showButtons = false;
-
+	$: isCurrentUser = message.user_id === $user.id;
 	let edit = false;
 	let editedContent = null;
 	let showDeleteConfirmDialog = false;
@@ -67,7 +70,7 @@
 	>
 		{#if !edit}
 			<div
-				class=" absolute {showButtons ? '' : 'invisible group-hover:visible'} right-1 -top-2 z-10"
+				class=" absolute {showButtons ? '' : 'invisible group-hover:visible'} {isCurrentUser ? 'left-1' : 'right-1'} -top-2 z-10"
 			>
 				<div
 					class="flex gap-1 rounded-lg bg-white dark:bg-gray-850 shadow-md p-0.5 border border-gray-100 dark:border-gray-800"
@@ -131,14 +134,18 @@
 		{/if}
 
 		<div
-			class=" flex w-full message-{message.id}"
-			id="message-{message.id}"
-			dir={$settings.chatDirection}
-		>
+            class="flex w-full message-{message.id} {isCurrentUser ? 'flex-row-reverse' : ''}"
+            id="message-{message.id}"
+            dir={$settings.chatDirection}
+        >
 			<div
-				class={`flex-shrink-0 ${($settings?.chatDirection ?? 'LTR') === 'LTR' ? 'mr-3' : 'ml-3'} w-9`}
-			>
-				{#if showUserProfile}
+                class={`flex-shrink-0 ${
+                    isCurrentUser
+                        ? ($settings.chatDirection === 'LTR' ? 'ml-3' : 'mr-3')
+                        : ($settings.chatDirection === 'LTR' ? 'mr-3' : 'ml-3')
+                } w-9`}
+            >
+				{#if !isCurrentUser}
 					<ProfilePreview user={message.user}>
 						<ProfileImage
 							src={message.user?.profile_image_url ??
@@ -146,46 +153,32 @@
 							className={'size-8 translate-y-1 ml-0.5'}
 						/>
 					</ProfilePreview>
-				{:else}
-					<!-- <div class="w-7 h-7 rounded-full bg-transparent" /> -->
-
-					{#if message.created_at}
-						<div
-							class="mt-1.5 flex flex-shrink-0 items-center text-xs self-center invisible group-hover:visible text-gray-500 font-medium first-letter:capitalize"
-						>
-							<Tooltip
-								content={dayjs(message.created_at / 1000000).format('dddd, DD MMMM YYYY HH:mm')}
-							>
-								{dayjs(message.created_at / 1000000).format('HH:mm')}
-							</Tooltip>
-						</div>
-					{/if}
 				{/if}
 			</div>
 
-			<div class="flex-auto w-0 pl-1">
-				{#if showUserProfile}
+			<div class="flex-auto w-0 {isCurrentUser ? 'pr-1 text-right' : 'pl-1'}">
+				{#if !isCurrentUser}
 					<Name>
-						<div class=" self-end text-base shrink-0 font-medium truncate">
-							{message?.user?.name}
-						</div>
-
-						{#if message.created_at}
-							<div
-								class=" self-center text-xs invisible group-hover:visible text-gray-400 font-medium first-letter:capitalize ml-0.5 translate-y-[1px]"
-							>
-								<Tooltip
-									content={dayjs(message.created_at / 1000000).format('dddd, DD MMMM YYYY HH:mm')}
-								>
-									<span class="line-clamp-1">{formatDate(message.created_at / 1000000)}</span>
-								</Tooltip>
+						<div class="flex items-center gap-1">
+							<div class="self-end text-base shrink-0 font-medium truncate">
+								{message?.user?.name}
 							</div>
-						{/if}
+
+							{#if message.created_at}
+								<div
+									class="self-center text-xs invisible group-hover:visible text-gray-400 font-medium first-letter:capitalize translate-y-[1px]"
+								>
+									<Tooltip content={dayjs(message.created_at / 1000000).format('LLLL')}>
+										<span class="line-clamp-1">{formatDate(message.created_at / 1000000)}</span>
+									</Tooltip>
+								</div>
+							{/if}
+						</div>
 					</Name>
 				{/if}
 
 				{#if (message?.data?.files ?? []).length > 0}
-					<div class="my-2.5 w-full flex overflow-x-auto gap-2 flex-wrap">
+					<div class="my-2.5 w-full flex overflow-x-auto gap-2 flex-wrap {isCurrentUser ? 'justify-end' : ''}">
 						{#each message?.data?.files as file}
 							<div>
 								{#if file.type === 'image'}
@@ -262,7 +255,7 @@
 
 					{#if (message?.reactions ?? []).length > 0}
 						<div>
-							<div class="flex items-center flex-wrap gap-y-1.5 gap-1 mt-1 mb-2">
+							<div class="flex items-center flex-wrap gap-y-1.5 gap-1 mt-1 mb-2 {isCurrentUser ? 'justify-end' : ''}">
 								{#each message.reactions as reaction}
 									<Tooltip content={`:${reaction.name}:`}>
 										<button
@@ -317,7 +310,7 @@
 					{/if}
 
 					{#if !thread && message.reply_count > 0}
-						<div class="flex items-center gap-1.5 -mt-0.5 mb-1.5">
+						<div class="flex items-center gap-1.5 -mt-0.5 mb-1.5 {isCurrentUser ? 'justify-end' : ''}">
 							<button
 								class="flex items-center text-xs py-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition"
 								on:click={() => {
