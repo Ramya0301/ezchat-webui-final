@@ -175,6 +175,16 @@
 							{/if}
 						</div>
 					</Name>
+				{:else if message.created_at}
+					<div class="flex justify-end mb-1">
+						<div
+							class="text-xs invisible group-hover:visible text-gray-400 font-medium first-letter:capitalize"
+						>
+							<Tooltip content={dayjs(message.created_at / 1000000).format('LLLL')}>
+								<span class="line-clamp-1">{formatDate(message.created_at / 1000000)}</span>
+							</Tooltip>
+						</div>
+					</div>
 				{/if}
 
 				{#if (message?.data?.files ?? []).length > 0}
