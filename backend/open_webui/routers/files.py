@@ -216,7 +216,7 @@ async def update_file_data_content_by_id(
 @router.get("/{id}/content")
 async def get_file_content_by_id(id: str, user=Depends(get_verified_user)):
     file = Files.get_file_by_id(id)
-    if file and (file.user_id == user.id or user.role == "admin"):
+    if file:
         try:
             file_path = Storage.get_file(file.path)
             file_path = Path(file_path)
@@ -261,7 +261,7 @@ async def get_file_content_by_id(id: str, user=Depends(get_verified_user)):
 @router.get("/{id}/content/html")
 async def get_html_file_content_by_id(id: str, user=Depends(get_verified_user)):
     file = Files.get_file_by_id(id)
-    if file and (file.user_id == user.id or user.role == "admin"):
+    if file:
         try:
             file_path = Storage.get_file(file.path)
             file_path = Path(file_path)
@@ -293,7 +293,7 @@ async def get_html_file_content_by_id(id: str, user=Depends(get_verified_user)):
 async def get_file_content_by_id(id: str, user=Depends(get_verified_user)):
     file = Files.get_file_by_id(id)
 
-    if file and (file.user_id == user.id or user.role == "admin"):
+    if file:
         file_path = file.path
 
         # Handle Unicode filenames
