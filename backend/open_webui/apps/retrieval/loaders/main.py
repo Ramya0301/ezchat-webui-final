@@ -2,7 +2,7 @@ import requests
 import logging
 import ftfy
 import pandas as pd
-
+from pptx import Presentation
 from langchain_community.document_loaders import (
     BSHTMLLoader,
     CSVLoader,
@@ -171,6 +171,31 @@ class CustomExcelLoader:
             logging.warning(f"Could not generate metadata for sheet '{sheet_name}': {str(e)}")
         return metadata
 
+class CustomPowerPointLoader:
+    def __init__(self, file_path):
+        self.file_path = file_path
+
+    def load(self) -> list[Document]:
+        try:
+            prs = Presentation(self.file_path)
+            text_content = []
+            
+            for slide_number, slide in enumerate(prs.slides, 1):
+                slide_text = []
+                for shape in slide.shapes:
+                    if hasattr(shape, "text"):
+                        if shape.text.strip():  # Only add non-empty text
+                            slide_text.append(shape.text.strip())
+                
+                if slide_text:  # Only add slides with text
+                    text_content.append(f"Slide {slide_number}:\n" + "\n".join(slide_text))
+            
+            full_text = "\n\n".join(text_content)
+            return [Document(page_content=full_text, metadata={"source": self.file_path})]
+        except Exception as e:
+            log.error(f"Error loading PowerPoint file: {e}")
+            raise e
+
 class Loader:
     def __init__(self, engine: str = "", **kwargs):
         self.engine = engine
@@ -235,7 +260,7 @@ class Loader:
                 "application/vnd.ms-powerpoint",
                 "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             ] or file_ext in ["ppt", "pptx"]:
-                loader = UnstructuredPowerPointLoader(file_path)
+                loader = CustomPowerPointLoader(file_path)
             elif file_ext == "msg":
                 loader = OutlookMessageLoader(file_path)
             elif file_ext in known_source_ext or (
