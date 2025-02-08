@@ -1,6 +1,8 @@
 import requests
 import logging
 import ftfy
+import pandas as pd
+from pptx import Presentation
 import sys
 
 from langchain_community.document_loaders import (
@@ -114,6 +116,88 @@ class TikaLoader:
         else:
             raise Exception(f"Error calling Tika: {r.reason}")
 
+class CustomExcelLoader:
+    def __init__(self, file_path: str, chunk_size: int = 1000, max_rows: int = None):
+        self.file_path = file_path
+        self.chunk_size = chunk_size
+        self.max_rows = max_rows
+
+    def load(self) -> list[Document]:
+        try:
+            excel_file = pd.ExcelFile(self.file_path)
+            documents = []
+
+            for sheet_name in excel_file.sheet_names:
+                df = self._load_sheet(sheet_name)
+                if df is not None:  # Skip empty or invalid sheets
+                    content = self._convert_to_string(sheet_name, df)
+                    metadata = self._generate_metadata(sheet_name, df)
+                    documents.append(Document(page_content=content, metadata=metadata))
+            
+            return documents
+        except Exception as e:
+            logging.error(f"Error loading Excel file '{self.file_path}': {str(e)}")
+            raise
+
+    def _load_sheet(self, sheet_name: str) -> pd.DataFrame:
+        try:
+            df = pd.read_excel(
+                self.file_path,
+                sheet_name=sheet_name,
+                nrows=self.max_rows,
+                usecols=lambda col: not col.startswith("Unnamed"),
+            )
+            if df.empty or len(df.columns) == 0:
+                logging.info(f"Skipping empty sheet: {sheet_name}")
+                return None
+            return df
+        except Exception as e:
+            logging.warning(f"Error processing sheet '{sheet_name}': {str(e)}")
+            return None
+
+    def _convert_to_string(self, sheet_name: str, df: pd.DataFrame) -> str:
+        content = f"Sheet: {sheet_name}\n"
+        content += df.head(self.chunk_size).to_string(index=False)
+        return content
+
+    def _generate_metadata(self, sheet_name: str, df: pd.DataFrame) -> dict:
+        metadata = {
+            "source": self.file_path,
+            "sheet_name": sheet_name,
+        }
+        try:
+            metadata.update({
+                "row_count": len(df),
+                "column_count": len(df.columns),
+            })
+        except Exception as e:
+            logging.warning(f"Could not generate metadata for sheet '{sheet_name}': {str(e)}")
+        return metadata
+    
+class CustomPowerPointLoader:
+    def __init__(self, file_path):
+        self.file_path = file_path
+
+    def load(self) -> list[Document]:
+        try:
+            prs = Presentation(self.file_path)
+            text_content = []
+            
+            for slide_number, slide in enumerate(prs.slides, 1):
+                slide_text = []
+                for shape in slide.shapes:
+                    if hasattr(shape, "text"):
+                        if shape.text.strip():  # Only add non-empty text
+                            slide_text.append(shape.text.strip())
+                
+                if slide_text:  # Only add slides with text
+                    text_content.append(f"Slide {slide_number}:\n" + "\n".join(slide_text))
+            
+            full_text = "\n\n".join(text_content)
+            return [Document(page_content=full_text, metadata={"source": self.file_path})]
+        except Exception as e:
+            log.error(f"Error loading PowerPoint file: {e}")
+            raise e
 
 class Loader:
     def __init__(self, engine: str = "", **kwargs):
@@ -174,12 +258,12 @@ class Loader:
                 "application/vnd.ms-excel",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             ] or file_ext in ["xls", "xlsx"]:
-                loader = UnstructuredExcelLoader(file_path)
+                loader = CustomExcelLoader(file_path)
             elif file_content_type in [
                 "application/vnd.ms-powerpoint",
                 "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             ] or file_ext in ["ppt", "pptx"]:
-                loader = UnstructuredPowerPointLoader(file_path)
+                loader = CustomPowerPointLoader(file_path)
             elif file_ext == "msg":
                 loader = OutlookMessageLoader(file_path)
             elif file_ext in known_source_ext or (
